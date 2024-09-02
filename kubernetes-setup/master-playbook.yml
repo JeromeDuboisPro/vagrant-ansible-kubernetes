@@ -122,26 +122,22 @@
     get_url:
       url: https://docs.projectcalico.org/v3.20/manifests/calico.yaml
       dest: /home/vagrant/calico.yaml
-    when: install_calico is defined
 
   - name: Add pod config to calico.yaml
     lineinfile:
       dest: /home/vagrant/calico.yaml
       regexp: '^\s{12}#\s*- name: CALICO_IPV4POOL_CIDR.*$'
       line: '            - name: CALICO_IPV4POOL_CIDR'
-    when: install_calico is defined
 
   - name: Add pod config to calico.yaml
     lineinfile:
       dest: /home/vagrant/calico.yaml
       regexp: '^\s{12}#\s*  value: "192.168.0.0\/16".*$'
       line: '              value: "172.16.0.0/16"'
-    when: install_calico is defined
 
   - name: Install calico CNI
     become: false
     command: kubectl create -f calico.yaml
-    when: install_calico is defined
 
   - name: Generate join command
     command: kubeadm token create --print-join-command
