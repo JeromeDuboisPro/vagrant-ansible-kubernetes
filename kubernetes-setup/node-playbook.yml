@@ -1,6 +1,16 @@
 ---
 - hosts: all
   become: true
+  vars:
+    k8s_packages:
+      - kubernetes-cni
+      - kubelet
+      - kubeadm
+      - kubectl
+    k8s_url_apt_key: "https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key"
+    k8s_gpgpath: /usr/share/keyrings/kubernetes-apt-keyring.gpg
+    k8s_repository: "https://pkgs.k8s.io/core:/stable:/v1.31/deb/"
+
   tasks:
   - name: Install necessary packages
     apt:
@@ -38,27 +48,23 @@
     command: swapoff -a
     when: ansible_swaptotal_mb > 0
 
-  - name: Add an apt signing key for Kubernetes
-    apt_key:
-      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
-      state: present
-
-  - name: Adding apt repository for Kubernetes
-    apt_repository:
-      repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
-      state: present
-      filename: kubernetes.list
-
-  - name: Install Kubernetes binaries
-    apt: 
-      name: "{{ packages }}"
-      state: present
-      update_cache: yes
+  - name: Get Kubernetes package key
+    shell: curl -fsSL {{ k8s_url_apt_key }} | gpg --dearmor -o {{ k8s_gpgpath }}
+    args:
+      creates: "{{ k8s_gpgpath }}"
     vars:
-      packages:
-        - kubelet=1.23.0-00
-        - kubeadm=1.23.0-00
-        - kubectl=1.23.0-00
+      k8s_url_apt_key: "https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key"
+      k8s_gpgpath: /usr/share/keyrings/kubernetes-apt-keyring.gpg
+      k8s_repository: "https://pkgs.k8s.io/core:/stable:/v1.28/deb/"
+
+  - name: Install Kubernetes repository
+    apt_repository:
+      filename: kubernetes
+      repo: "deb [signed-by={{ k8s_gpgpath }}] {{ k8s_repository }} /"
+
+  - name: Install Kubernetes Packages
+    package: name={{ item }} state=present force=yes install_recommends=no
+    loop: "{{ k8s_packages }}"
 
   - name: Configure containerd
     blockinfile:
